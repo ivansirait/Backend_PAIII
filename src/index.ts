@@ -1,11 +1,17 @@
-import express from 'express'; // Mengambil fungsi express (Data/Value)
-import type { Request, Response } from 'express'; // Mengambil tipe data (Type Only)
+import express from 'express';
+import type { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path'; // TAMBAHKAN INI
 import { prisma } from './config/db.js';
+
+// Import routes
 import laporanRoutes from './routes/laporanRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import postRoutes from './routes/postRoutes.js';
+import galleryRoutes from './routes/galleryRoutes.js';
+import uploadRoutes from './routes/uploadRoutes.js'; // TAMBAHKAN INI
 
 dotenv.config();
 const app = express();
@@ -13,8 +19,21 @@ const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
+
+// Serve static files from uploads directory - PENTING UNTUK MENGAKSES GAMBAR
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+// Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/laporan', laporanRoutes);
+app.use('/api/posts', postRoutes);
+app.use('/api/galleries', galleryRoutes);
+app.use('/api/upload', uploadRoutes); // TAMBAHKAN ROUTE UPLOAD
+
+// Untuk backward compatibility dengan endpoint /api/auth/posts
+app.use('/api/auth/posts', postRoutes);
+app.use('/api/auth/galleries', galleryRoutes); // TAMBAHKAN JUGA UNTUK GALLERIES
 
 // Prototype BigInt agar tidak error saat JSON.stringify
 (BigInt.prototype as any).toJSON = function () { return this.toString(); };
@@ -35,14 +54,31 @@ const seedUser = async () => {
       });
       console.log("✅ User Default OK");
     }
-  } catch (e) { console.log("Seeding skipped."); }
+  } catch (e) { 
+    console.log("Seeding skipped:", e); 
+  }
 };
 seedUser();
 
 // Routes
 app.get('/', (req, res) => res.send('🚀 Server CleanCity OK!'));
-app.use('/laporan', laporanRoutes);
 
 app.listen(PORT, () => {
   console.log(`🚀 Server nyala di http://localhost:${PORT}`);
+  console.log(`📝 Endpoints available:`);
+  console.log(`   - GET /api/posts`);
+  console.log(`   - POST /api/posts`);
+  console.log(`   - GET /api/posts/:id`);
+  console.log(`   - GET /api/posts/slug/:slug`);
+  console.log(`   - PUT /api/posts/:id`);
+  console.log(`   - DELETE /api/posts/:id`);
+  console.log(`   - GET /api/galleries`);
+  console.log(`   - GET /api/galleries/slider`);
+  console.log(`   - POST /api/galleries`);
+  console.log(`   - PUT /api/galleries/:id`);
+  console.log(`   - DELETE /api/galleries/:id`);
+  console.log(`   - GET /api/laporan`);
+  console.log(`   - POST /api/auth/login`);
+  console.log(`   - POST /api/upload - Untuk upload gambar`); // TAMBAHKAN INI
+  console.log(`   - GET /uploads/[filename] - Untuk akses gambar`); // TAMBAHKAN INI
 });
