@@ -4,14 +4,13 @@ import type { Request, Response } from 'express'; // Tambahkan kata 'type'
 // BAGIAN PERBAIKAN: Gunakan .js di akhir path jika menggunakan "type": "module"
 import { prisma, supabase } from '../config/db.js'; 
 
-export const getLaporan = async (req: Request, res: Response) => {
-  try { 
-    const data = await prisma.report.findMany({
-      orderBy: { createdAt: 'desc' }
-    });
+export const getLaporan = async (req : Request, res : Response) => {
+  try {
+    const data = await prisma.report.findMany();
     res.json(data);
   } catch (error) {
-    res.status(500).json({ error: "Gagal ambil data" });
+    console.error("ERROR GET LAPORAN:", error);
+    res.status(500).json({ error: "Gagal ambil data", detail: error });
   }
 };
 

@@ -6,6 +6,8 @@ import { prisma } from './config/db.js';
 import laporanRoutes from './routes/laporanRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import postRoutes from './routes/postRoutes.js';
+import galleryRoutes from './routes/galleryRoutes.js';
 
 dotenv.config();
 const app = express();
@@ -15,6 +17,8 @@ app.use(cors());
 app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/posts', postRoutes);
+app.use('/api/galleries', galleryRoutes);
 
 // Prototype BigInt agar tidak error saat JSON.stringify
 (BigInt.prototype as any).toJSON = function () { return this.toString(); };
@@ -41,7 +45,7 @@ seedUser();
 
 // Routes
 app.get('/', (req, res) => res.send('🚀 Server CleanCity OK!'));
-app.use('/laporan', laporanRoutes);
+app.use('/api/laporan', laporanRoutes);
 
 app.listen(PORT, () => {
   console.log(`🚀 Server nyala di http://localhost:${PORT}`);

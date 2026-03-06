@@ -7,7 +7,167 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// --- ENUMS ---
+model User {
+  id            BigInt          @id @default(autoincrement())
+  email         String          @unique
+  passwordHash  String          @map("password_hash")
+  fullName      String          @map("full_name")
+  phoneNumber   String?         @map("phone_number")
+  role          Role            @default(WARGA)
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @default(now()) @map("updated_at")
+  isActive      Boolean         @default(true)
+  notifications notifications[]
+  posts         Post[]
+  reports       Report[]
+  trucks        Truck[]
+  volumes       Volume[]
+
+  @@map("users")
+}
+
+model Location {
+  id             BigInt                    @id @default(autoincrement())
+  name           String
+  locationType   String                    @map("location_type")
+  latitude       Decimal                   @db.Decimal(10, 8)
+  longitude      Decimal                   @db.Decimal(11, 8)
+  geom           Unsupported("geography")?
+  address        String?
+  capacityVolume Int?                      @map("capacity_volume")
+  createdAt      DateTime                  @default(now()) @map("created_at")
+  updatedAt      DateTime                  @default(now()) @map("updated_at")
+  reports        Report[]
+  routesStart    Route[]                   @relation("StartLocation")
+
+  @@map("locations")
+}
+
+model Report {
+  id            BigInt                    @id @default(autoincrement())
+  userId        BigInt                    @map("user_id")
+  jenisSampah   String?                   @map("jenis_sampah")
+  locationId    BigInt?                   @map("location_id")
+  latitude      Decimal                   @db.Decimal(10, 8)
+  longitude     Decimal                   @db.Decimal(11, 8)
+  geom          Unsupported("geography")?
+  photoUrl      String?                   @map("photo_url")
+  description   String?
+  latCompleted  Decimal?                  @map("lat_completed") @db.Decimal(10, 8)
+  longCompleted Decimal?                  @map("long_completed") @db.Decimal(11, 8)
+  photoAfterUrl String?                   @map("photo_after_url")
+  status        ReportStatus              @default(PENDING)
+  createdAt     DateTime                  @default(now()) @map("created_at")
+  updatedAt     DateTime                  @default(now()) @map("updated_at")
+  location      Location?                 @relation(fields: [locationId], references: [id])
+  user          User                      @relation(fields: [userId], references: [id])
+  volumes       Volume[]
+
+  @@map("reports")
+}
+
+model Truck {
+  id              BigInt            @id @default(autoincrement())
+  plateNumber     String            @unique @map("plate_number")
+  operatorId      BigInt?           @map("operator_id")
+  currentLat      Decimal?          @map("current_lat") @db.Decimal(10, 8)
+  currentLong     Decimal?          @map("current_long") @db.Decimal(11, 8)
+  lastPing        DateTime?         @map("last_ping")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @default(now()) @map("updated_at")
+  status          TruckStatus       @default(AVAILABLE)
+  locationHistory LocationHistory[]
+  routes          Route[]
+  operator        User?             @relation(fields: [operatorId], references: [id])
+
+  @@map("trucks")
+}
+
+model LocationHistory {
+  id        BigInt   @id @default(autoincrement())
+  truckId   BigInt   @map("truck_id")
+  latitude  Decimal  @db.Decimal(10, 8)
+  longitude Decimal  @db.Decimal(11, 8)
+  createdAt DateTime @default(now()) @map("created_at")
+  truck     Truck    @relation(fields: [truckId], references: [id])
+
+  @@map("location_history")
+}
+
+model Route {
+  id              BigInt    @id @default(autoincrement())
+  truckId         BigInt    @map("truck_id")
+  date            DateTime  @db.Date
+  startLocationId BigInt?   @map("start_location_id")
+  status          String    @default("PLANNED") @map("route_status")
+  startLocation   Location? @relation("StartLocation", fields: [startLocationId], references: [id])
+  truck           Truck     @relation(fields: [truckId], references: [id])
+
+  @@map("routes")
+}
+
+model Volume {
+  id             BigInt   @id @default(autoincrement())
+  reportId       BigInt?  @map("report_id")
+  volumeKg       Decimal  @map("volume_kg") @db.Decimal(10, 2)
+  recordedAt     DateTime @default(now()) @map("recorded_at")
+  recordedBy     BigInt?  @map("recorded_by")
+  recordedByUser User?    @relation(fields: [recordedBy], references: [id])
+  report         Report?  @relation(fields: [reportId], references: [id])
+
+  @@map("volumes")
+}
+
+model Post {
+  id          Int      @id @default(autoincrement())
+  title       String
+  slug        String   @unique
+  content     String
+  category    Category @default(BERITA)
+  imageUrl    String?  @map("image_url")
+  isPublished Boolean  @default(false) @map("is_published")
+  is_featured Boolean  @default(false)
+  author_id   BigInt
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @map("updated_at")
+  users       User     @relation(fields: [author_id], references: [id])
+
+  @@map("posts")
+}
+
+model Gallery {
+  id          Int      @id @default(autoincrement())
+  title       String?
+  imageUrl    String   @map("image_url")
+  is_slider   Boolean  @default(false)
+  createdAt   DateTime @default(now()) @map("created_at")
+  description String?
+
+  @@map("galleries")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model documents {
+  id             Int      @id @default(autoincrement())
+  title          String
+  description    String?
+  file_url       String
+  file_size      String?
+  download_count Int      @default(0)
+  created_at     DateTime @default(now())
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model notifications {
+  id         BigInt   @id @default(autoincrement())
+  user_id    BigInt
+  title      String
+  message    String
+  is_read    Boolean  @default(false)
+  created_at DateTime @default(now())
+  users      User     @relation(fields: [user_id], references: [id])
+}
+
 enum Role {
   WARGA
   OPERATOR
@@ -26,129 +186,8 @@ enum TruckStatus {
   MAINTENANCE
 }
 
-
-
-// --- MODELS ---
-
-model User {
-  id           BigInt    @id @default(autoincrement())
-  email        String    @unique
-  passwordHash String    @map("password_hash")
-  fullName     String    @map("full_name")
-  phoneNumber  String?   @map("phone_number")
-  role         Role      @default(WARGA)
-  isActive     Boolean   @default(true)
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @default(now()) @map("updated_at")
-  
-  reports      Report[]
-  trucks       Truck[]   
-  volumes      Volume[]
-
-  @@map("users")
-}
-
-model Location {
-  id             BigInt    @id @default(autoincrement())
-  name           String
-  locationType   String    @map("location_type") 
-  latitude       Decimal   @db.Decimal(10, 8)
-  longitude      Decimal   @db.Decimal(11, 8)
-  geom           Unsupported("geography(Point, 4326)")?
-
-  address        String?
-  capacityVolume Int?      @map("capacity_volume")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @default(now()) @map("updated_at")
-  
-  reports        Report[]
-  routesStart    Route[]   @relation("StartLocation")
-
-  @@map("locations")
-}
-
-model Report {
-  id              BigInt       @id @default(autoincrement())
-  userId          BigInt       @map("user_id")
-  user            User         @relation(fields: [userId], references: [id])
-  
-  // Menghapus waste_category_id dan menggantinya dengan field teks biasa
-  jenisSampah     String?      @map("jenis_sampah") 
-  
-  locationId      BigInt?      @map("location_id")
-  location        Location?    @relation(fields: [locationId], references: [id])
-  
-  latitude        Decimal      @db.Decimal(10, 8)
-  longitude       Decimal      @db.Decimal(11, 8)
-  geom            Unsupported("geography(Point, 4326)")?
-  photoUrl        String?      @map("photo_url") 
-  description     String?
-  
-  latCompleted    Decimal?     @db.Decimal(10, 8) @map("lat_completed")
-  longCompleted   Decimal?     @db.Decimal(11, 8) @map("long_completed")
-  photoAfterUrl   String?      @map("photo_after_url") 
-  
-  status          ReportStatus @default(PENDING)
-  createdAt       DateTime     @default(now()) @map("created_at")
-  updatedAt       DateTime     @default(now()) @map("updated_at")
-  
-  volumes         Volume[]
-
-  @@map("reports")
-}
-
-model Truck {
-  id                BigInt    @id @default(autoincrement())
-  plateNumber       String    @unique @map("plate_number")
-  operatorId        BigInt?   @map("operator_id")
-  operator          User?     @relation(fields: [operatorId], references: [id])
-  
-  currentLat        Decimal?  @db.Decimal(10, 8) @map("current_lat")
-  currentLong       Decimal?  @db.Decimal(11, 8) @map("current_long")
-  lastPing          DateTime? @map("last_ping")
-  
-  status            TruckStatus @default(AVAILABLE)
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime  @default(now()) @map("updated_at")
-  
-  routes            Route[]
-  locationHistory   LocationHistory[]
-
-  @@map("trucks")
-}
-
-model LocationHistory {
-  id        BigInt   @id @default(autoincrement())
-  truckId   BigInt   @map("truck_id")
-  truck     Truck    @relation(fields: [truckId], references: [id])
-  latitude  Decimal  @db.Decimal(10, 8)
-  longitude Decimal  @db.Decimal(11, 8)
-  createdAt DateTime @default(now()) @map("created_at")
-
-  @@map("location_history")
-}
-
-model Route {
-  id                BigInt    @id @default(autoincrement())
-  truckId           BigInt    @map("truck_id")
-  truck             Truck     @relation(fields: [truckId], references: [id])
-  date              DateTime  @db.Date
-  startLocationId   BigInt?   @map("start_location_id")
-  startLocation     Location? @relation("StartLocation", fields: [startLocationId], references: [id])
-  status            String    @default("PLANNED") @map("route_status")
-
-  @@map("routes")
-}
-
-model Volume {
-  id              BigInt         @id @default(autoincrement())
-  reportId        BigInt?        @map("report_id")
-  report          Report?        @relation(fields: [reportId], references: [id])
-  volumeKg        Decimal        @map("volume_kg") @db.Decimal(10, 2)
-  recordedAt      DateTime       @default(now()) @map("recorded_at")
-
-  recordedBy      BigInt?        @map("recorded_by")
-  recordedByUser  User?          @relation(fields: [recordedBy], references: [id])
-
-  @@map("volumes")
+enum Category {
+  BERITA
+  PENGUMUMAN
+  PROFIL_DLH
 }
