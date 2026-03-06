@@ -82,3 +82,81 @@ export const login = async (req: Request, res: Response) => {
     });
   }
 };
+
+// Tambahkan fungsi ini di authController.ts
+
+export const register = async (req: Request, res: Response) => {
+  try {
+    const { email, fullName, password, phoneNumber } = req.body;
+    
+    console.log('Mencoba register untuk email:', email);
+
+    // Validasi input
+    if (!email || !fullName || !password) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Email, nama lengkap, dan password harus diisi' 
+      });
+    }
+
+    // Cek apakah email sudah terdaftar
+    const existingUser = await prisma.user.findUnique({
+      where: { email }
+    });
+
+    if (existingUser) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Email sudah terdaftar' 
+      });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Buat user baru dengan role WARGA
+    const newUser = await prisma.user.create({
+      data: {
+        email,
+        fullName,
+        passwordHash: hashedPassword,
+        phoneNumber: phoneNumber || null,
+        role: 'WARGA',
+        isActive: true
+      }
+    });
+
+    // Buat token JWT
+    const token = jwt.sign(
+      { 
+        id: newUser.id.toString(),
+        email: newUser.email,
+        role: newUser.role,
+        fullName: newUser.fullName
+      },
+      process.env.JWT_SECRET || 'rahasia-default',
+      { expiresIn: '1d' }
+    );
+
+    console.log('Register berhasil untuk:', email);
+
+    res.status(201).json({
+      success: true,
+      message: 'Registrasi berhasil',
+      token,
+      user: {
+        id: newUser.id.toString(),
+        email: newUser.email,
+        fullName: newUser.fullName,
+        role: newUser.role
+      }
+    });
+
+  } catch (error) {
+    console.error('Error saat register:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Terjadi kesalahan server' 
+    });
+  }
+};

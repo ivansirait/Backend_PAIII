@@ -4,17 +4,8 @@ import jwt from 'jsonwebtoken';
 // Definisikan tipe untuk NextFunction
 type NextFunction = (err?: any) => void;
 
-// Interface untuk Request dengan user
-interface AuthRequest extends Request {
-  user?: {
-    id: string;
-    email: string;
-    role: string;
-  };
-}
-
 export const authenticateToken = (
-  req: AuthRequest, 
+  req: Request, 
   res: Response, 
   next: NextFunction
 ): void => {
@@ -33,9 +24,9 @@ export const authenticateToken = (
     const decoded = jwt.verify(
       token, 
       process.env.JWT_SECRET || 'rahasia-default'
-    ) as { id: string; email: string; role: string };
+    ) as { id: string; email: string; role: string; fullName?: string };
     
-    req.user = decoded;
+    req.user = decoded;  // <-- Sekarang TypeScript tahu ini ada
     next();
   } catch (error) {
     res.status(403).json({ 
@@ -43,4 +34,27 @@ export const authenticateToken = (
       message: 'Token tidak valid atau sudah kadaluarsa.' 
     });
   }
+};
+
+// Middleware untuk memeriksa role
+export const authorizeRole = (roles: string[]) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      res.status(401).json({ 
+        success: false,
+        message: 'Unauthorized. Silakan login terlebih dahulu.' 
+      });
+      return;
+    }
+
+    if (!roles.includes(req.user.role)) {
+      res.status(403).json({ 
+        success: false,
+        message: 'Akses ditolak. Anda tidak memiliki izin untuk mengakses resource ini.' 
+      });
+      return;
+    }
+
+    next();
+  };
 };

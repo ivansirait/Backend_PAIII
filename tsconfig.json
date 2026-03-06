@@ -10,7 +10,10 @@
     "outDir": "./dist",
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
-    "moduleDetection": "force"
+    "moduleDetection": "force",
+    "typeRoots": ["./node_modules/@types", 
+    "./src/types"] 
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+    "exclude": ["node_modules"]
 }
