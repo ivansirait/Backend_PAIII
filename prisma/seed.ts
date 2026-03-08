@@ -1,49 +1,65 @@
-import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcrypt'; // Tambahkan import ini
+import { PrismaClient, Category } from '@prisma/client'; // Tambahkan Category di sini
+import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  const hashedPassword = await bcrypt.hash('sampah123', 10); // Hash passwordnya
+  console.log('🌱 Memulai proses Seeding...');
+
+  const hashedPassword = await bcrypt.hash('sampah123', 10);
 
   const admin = await prisma.user.upsert({
     where: { email: 'admin@dlh.com' },
-    update: {},
+    update: { passwordHash: hashedPassword },
     create: {
       email: 'admin@dlh.com',
       fullName: 'Administrator DLH',
-      passwordHash: hashedPassword, // Simpan hasil hash
+      passwordHash: hashedPassword,
       role: 'ADMIN',
       isActive: true,
     },
   });
-  console.log('✅ User Admin Berhasil Dibuat: admin@dlh.com');
 
-  // 2. Buat Contoh Berita (Post) untuk Homepage
-  await prisma.post.createMany({
-    data: [
-      {
-        title: 'Pengumuman Jadwal Baru Pengangkutan',
-        slug: 'jadwal-baru-2026',
-        content: 'Mulai Maret 2026, armada akan beroperasi mulai pukul 05.00 WIB...',
-        category: 'PENGUMUMAN',
-        isPublished: true,
-        isFeatured: true,
-        authorId: admin.id,
+  // TENTUKAN TIPENYA DI SINI AGAR TIDAK ERROR (as { ... }[])
+  const posts = [
+    {
+      title: 'Pengumuman Jadwal Baru Pengangkutan',
+      slug: 'jadwal-baru-2026',
+      content: 'Mulai Maret 2026, armada akan beroperasi mulai pukul 05.00 WIB...',
+      category: Category.PENGUMUMAN, // Gunakan Enum Category
+      isPublished: true,
+      isFeatured: true,
+      authorId: admin.id,
+    },
+    {
+      title: 'Tips Memilah Sampah Organik di Rumah',
+      slug: 'tips-pilah-sampah',
+      content: 'Memilah sampah dari rumah membantu mempercepat proses pengolahan di TPA...',
+      category: Category.BERITA, // Gunakan Enum Category
+      isPublished: true,
+      isFeatured: false,
+      authorId: admin.id,
+    }
+  ];
+
+  console.log('⏳ Menyinkronkan data berita...');
+
+  for (const post of posts) {
+    await prisma.post.upsert({
+      where: { slug: post.slug },
+      update: {
+        title: post.title,
+        content: post.content,
+        category: post.category, // Sekarang TypeScript sudah tahu ini Enum
+        isPublished: post.isPublished,
+        isFeatured: post.isFeatured,
+        authorId: post.authorId,
       },
-      {
-        title: 'Tips Memilah Sampah Organik di Rumah',
-        slug: 'tips-pilah-sampah',
-        content: 'Memilah sampah dari rumah membantu mempercepat proses pengolahan di TPA...',
-        category: 'BERITA',
-        isPublished: true,
-        authorId: admin.id,
-      }
-    ],
-  });
-  console.log('✅ Data Berita Awal Berhasil Dimasukkan');
+      create: post,
+    });
+  }
 
-  console.log('--- Seeding Selesai ---');
+  console.log('✅ Seeding Selesai!');
 }
 
 main()
