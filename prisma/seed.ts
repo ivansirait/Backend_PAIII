@@ -1,17 +1,20 @@
+
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
+import { PrismaClient, Category } from '@prisma/client'; // Tambahkan Category di sini
+import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log('🌱 Seeding database...');
-
+  console.log('🌱 Memulai proses Seeding...');
   const hashedPassword = await bcrypt.hash('sampah123', 10);
-
+  const hashedPassword = await bcrypt.hash('sampah123', 10);
   // Buat Admin
   const admin = await prisma.user.upsert({
     where: { email: 'admin@dlh.com' },
-    update: {},
+    update: { passwordHash: hashedPassword },
     create: {
       email: 'admin@dlh.com',
       fullName: 'Administrator DLH',
@@ -20,7 +23,6 @@ async function main() {
       isActive: true,
     },
   });
-  console.log('✅ User Admin Berhasil Dibuat: admin@dlh.com');
 
   // Buat Supir contoh
   const supir1 = await prisma.user.upsert({
@@ -137,6 +139,46 @@ for (const kec of kecamatanList) {
 console.log('✅ Data kecamatan created');
 
   console.log('🌱 Seeding selesai!');
+  // TENTUKAN TIPENYA DI SINI AGAR TIDAK ERROR (as { ... }[])
+  const posts = [
+    {
+      title: 'Pengumuman Jadwal Baru Pengangkutan',
+      slug: 'jadwal-baru-2026',
+      content: 'Mulai Maret 2026, armada akan beroperasi mulai pukul 05.00 WIB...',
+      category: Category.PENGUMUMAN, // Gunakan Enum Category
+      isPublished: true,
+      isFeatured: true,
+      authorId: admin.id,
+    },
+    {
+      title: 'Tips Memilah Sampah Organik di Rumah',
+      slug: 'tips-pilah-sampah',
+      content: 'Memilah sampah dari rumah membantu mempercepat proses pengolahan di TPA...',
+      category: Category.BERITA, // Gunakan Enum Category
+      isPublished: true,
+      isFeatured: false,
+      authorId: admin.id,
+    }
+  ];
+
+  console.log('⏳ Menyinkronkan data berita...');
+
+  for (const post of posts) {
+    await prisma.post.upsert({
+      where: { slug: post.slug },
+      update: {
+        title: post.title,
+        content: post.content,
+        category: post.category, // Sekarang TypeScript sudah tahu ini Enum
+        isPublished: post.isPublished,
+        isFeatured: post.isFeatured,
+        authorId: post.authorId,
+      },
+      create: post,
+    });
+  }
+
+  console.log('✅ Seeding Selesai!');
 }
 
 main()
