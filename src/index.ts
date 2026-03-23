@@ -8,6 +8,7 @@ import authRoutes from './routes/authRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import postRoutes from './routes/postRoutes.js';
 import galleryRoutes from './routes/galleryRoutes.js';
+import uploadRoutes from './routes/uploadRoutes.js';
 
 dotenv.config();
 const app = express();
@@ -19,6 +20,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/galleries', galleryRoutes);
+app.use('/api/upload', uploadRoutes);   
 
 // Prototype BigInt agar tidak error saat JSON.stringify
 (BigInt.prototype as any).toJSON = function () { return this.toString(); };

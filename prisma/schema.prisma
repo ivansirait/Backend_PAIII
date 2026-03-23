@@ -8,16 +8,16 @@ datasource db {
 }
 
 model User {
-  id            BigInt          @id @default(autoincrement())
-  email         String          @unique
-  passwordHash  String          @map("password_hash")
-  fullName      String          @map("full_name")
-  phoneNumber   String?         @map("phone_number")
-  role          Role            @default(WARGA)
-  createdAt     DateTime        @default(now()) @map("created_at")
-  updatedAt     DateTime        @default(now()) @map("updated_at")
-  isActive      Boolean         @default(true)
-  notifications notifications[]
+  id            BigInt         @id @default(autoincrement())
+  email         String         @unique
+  passwordHash  String         @map("password_hash")
+  fullName      String         @map("full_name")
+  phoneNumber   String?        @map("phone_number")
+  role          Role           @default(WARGA)
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @default(now()) @map("updated_at")
+  isActive      Boolean        @default(true)
+  notifications Notification[]
   posts         Post[]
   reports       Report[]
   trucks        Truck[]
@@ -46,7 +46,6 @@ model Location {
 model Report {
   id            BigInt                    @id @default(autoincrement())
   userId        BigInt                    @map("user_id")
-  jenisSampah   String?                   @map("jenis_sampah")
   locationId    BigInt?                   @map("location_id")
   latitude      Decimal                   @db.Decimal(10, 8)
   longitude     Decimal                   @db.Decimal(11, 8)
@@ -59,6 +58,7 @@ model Report {
   status        ReportStatus              @default(PENDING)
   createdAt     DateTime                  @default(now()) @map("created_at")
   updatedAt     DateTime                  @default(now()) @map("updated_at")
+  jenisSampah   String?                   @map("jenis_sampah")
   location      Location?                 @relation(fields: [locationId], references: [id])
   user          User                      @relation(fields: [userId], references: [id])
   volumes       Volume[]
@@ -126,46 +126,60 @@ model Post {
   category    Category @default(BERITA)
   imageUrl    String?  @map("image_url")
   isPublished Boolean  @default(false) @map("is_published")
-  is_featured Boolean  @default(false)
-  author_id   BigInt
+  isFeatured  Boolean  @default(false) @map("is_featured")
+  authorId    BigInt   @map("author_id")
   createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @map("updated_at")
-  users       User     @relation(fields: [author_id], references: [id])
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  author      User     @relation(fields: [authorId], references: [id])
 
   @@map("posts")
 }
 
-model Gallery {
-  id          Int      @id @default(autoincrement())
-  title       String?
-  imageUrl    String   @map("image_url")
-  is_slider   Boolean  @default(false)
-  createdAt   DateTime @default(now()) @map("created_at")
+model Document {
+  id            Int      @id @default(autoincrement())
+  title         String
+  description   String?
+  fileUrl       String   @map("file_url")
+  fileSize      String?  @map("file_size")
+  downloadCount Int      @default(0) @map("download_count")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("documents")
+}
+
+model GalleryAlbum {
+  id          Int            @id @default(autoincrement())
+  title       String
   description String?
+  coverUrl    String?        @map("cover_url")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+  photos      GalleryPhoto[]
 
-  @@map("galleries")
+  @@map("gallery_albums")
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model documents {
-  id             Int      @id @default(autoincrement())
-  title          String
-  description    String?
-  file_url       String
-  file_size      String?
-  download_count Int      @default(0)
-  created_at     DateTime @default(now())
+model GalleryPhoto {
+  id        Int          @id @default(autoincrement())
+  albumId   Int          @map("album_id")
+  imageUrl  String       @map("image_url")
+  caption   String?
+  createdAt DateTime     @default(now()) @map("created_at")
+  album     GalleryAlbum @relation(fields: [albumId], references: [id])
+
+  @@map("gallery_photos")
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model notifications {
-  id         BigInt   @id @default(autoincrement())
-  user_id    BigInt
-  title      String
-  message    String
-  is_read    Boolean  @default(false)
-  created_at DateTime @default(now())
-  users      User     @relation(fields: [user_id], references: [id])
+model Notification {
+  id        BigInt   @id @default(autoincrement())
+  userId    BigInt   @map("user_id")
+  title     String
+  message   String
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
 }
 
 enum Role {
