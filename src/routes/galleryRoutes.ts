@@ -14,41 +14,35 @@ const parseId = (idParam: string): number | null => {
 // GET semua galleries
 router.get('/', async (_req: Request, res: Response) => {
   try {
-    const galleries = await prisma.gallery.findMany({
+    const galleries = await prisma.galleries.findMany({
       orderBy: {
-        createdAt: 'desc'
+        created_at: 'desc'
       }
     })
 
     res.json(galleries)
   } catch (error) {
     console.error('Error fetching galleries:', error)
-
-    res.status(500).json({
-      message: 'Terjadi kesalahan server'
-    })
+    res.status(500).json({ message: 'Terjadi kesalahan server' })
   }
 })
 
 // GET gallery untuk slider
 router.get('/slider', async (_req: Request, res: Response) => {
   try {
-    const sliders = await prisma.gallery.findMany({
+    const sliders = await prisma.galleries.findMany({
       where: {
-        isSlider: true
+        is_slider: true
       },
       orderBy: {
-        createdAt: 'desc'
+        created_at: 'desc'
       }
     })
 
     res.json(sliders)
   } catch (error) {
     console.error('Error fetching slider galleries:', error)
-
-    res.status(500).json({
-      message: 'Terjadi kesalahan server'
-    })
+    res.status(500).json({ message: 'Terjadi kesalahan server' })
   }
 })
 
@@ -61,7 +55,7 @@ router.get('/:id', async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'ID tidak valid' })
     }
 
-    const gallery = await prisma.gallery.findUnique({
+    const gallery = await prisma.galleries.findUnique({
       where: { id }
     })
 
@@ -72,10 +66,7 @@ router.get('/:id', async (req: Request, res: Response) => {
     res.json(gallery)
   } catch (error) {
     console.error('Error fetching gallery:', error)
-
-    res.status(500).json({
-      message: 'Terjadi kesalahan server'
-    })
+    res.status(500).json({ message: 'Terjadi kesalahan server' })
   }
 })
 
@@ -85,26 +76,21 @@ router.post('/', async (req: Request, res: Response) => {
     const { title, imageUrl, isSlider } = req.body
 
     if (!imageUrl) {
-      return res.status(400).json({
-        message: 'Image URL wajib diisi'
-      })
+      return res.status(400).json({ message: 'Image URL wajib diisi' })
     }
 
-    const gallery = await prisma.gallery.create({
+    const gallery = await prisma.galleries.create({
       data: {
         title: title ?? null,
-        imageUrl,
-        isSlider: Boolean(isSlider)
+        image_url: imageUrl,
+        is_slider: Boolean(isSlider)
       }
     })
 
     res.status(201).json(gallery)
   } catch (error) {
     console.error('Error creating gallery:', error)
-
-    res.status(500).json({
-      message: 'Terjadi kesalahan server'
-    })
+    res.status(500).json({ message: 'Terjadi kesalahan server' })
   }
 })
 
@@ -119,12 +105,12 @@ router.put('/:id', async (req: Request, res: Response) => {
 
     const { title, imageUrl, isSlider } = req.body
 
-    const gallery = await prisma.gallery.update({
+    const gallery = await prisma.galleries.update({
       where: { id },
       data: {
         title,
-        imageUrl,
-        isSlider
+        image_url: imageUrl,
+        is_slider: isSlider
       }
     })
 
@@ -134,15 +120,11 @@ router.put('/:id', async (req: Request, res: Response) => {
 
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === 'P2025') {
-        return res.status(404).json({
-          message: 'Gallery tidak ditemukan'
-        })
+        return res.status(404).json({ message: 'Gallery tidak ditemukan' })
       }
     }
 
-    res.status(500).json({
-      message: 'Terjadi kesalahan server'
-    })
+    res.status(500).json({ message: 'Terjadi kesalahan server' })
   }
 })
 
@@ -152,13 +134,10 @@ router.delete('/:id', async (req: Request, res: Response) => {
     const id = parseId(req.params.id)
 
     if (!id) {
-      return res.status(400).json({
-        success: false,
-        message: 'ID tidak valid'
-      })
+      return res.status(400).json({ success: false, message: 'ID tidak valid' })
     }
 
-    await prisma.gallery.delete({
+    await prisma.galleries.delete({
       where: { id }
     })
 
@@ -172,17 +151,11 @@ router.delete('/:id', async (req: Request, res: Response) => {
 
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === 'P2025') {
-        return res.status(404).json({
-          success: false,
-          message: 'Gallery tidak ditemukan'
-        })
+        return res.status(404).json({ success: false, message: 'Gallery tidak ditemukan' })
       }
     }
 
-    res.status(500).json({
-      success: false,
-      message: 'Terjadi kesalahan server'
-    })
+    res.status(500).json({ success: false, message: 'Terjadi kesalahan server' })
   }
 })
 
