@@ -2,6 +2,18 @@ import { PrismaClient } from '@prisma/client';
 import type { Request, Response } from 'express';
 import { prisma, supabase } from '../config/db.js';
 
+const toBigIntParam = (value: string | string[] | undefined): bigint => {
+  if (Array.isArray(value)) {
+    return BigInt(value[0]);
+  }
+
+  if (!value) {
+    throw new Error('ID tidak valid');
+  }
+
+  return BigInt(value);
+};
+
 
 // Helper untuk konversi BigInt
 const bigIntToString = (obj: any): any => {
@@ -28,7 +40,7 @@ export const getDashboard = async (req: Request, res: Response) => {
     // Ambil semua tugas hari ini
     const tasks = await prisma.task.findMany({
       where: {
-        driverId: BigInt(supirId),
+        driverId: BigInt(String(supirId)),
         scheduledAt: {
           gte: today,
           lt: tomorrow
@@ -46,7 +58,7 @@ export const getDashboard = async (req: Request, res: Response) => {
     // Ambil notifikasi
     const notifications = await prisma.notification.findMany({
       where: {
-        userId: BigInt(supirId),
+        userId: BigInt(String(supirId)),
         isRead: false
       },
       orderBy: { createdAt: 'desc' },
@@ -90,7 +102,7 @@ export const getTugasAduan = async (req: Request, res: Response) => {
 
     const tasks = await prisma.task.findMany({
       where: {
-        driverId: BigInt(supirId),
+        driverId: BigInt(String(supirId)),
         type: 'ADUAN',
         scheduledAt: {
           gte: today,
@@ -209,8 +221,8 @@ export const getDetailTugas = async (req: Request, res: Response) => {
 
     const task = await prisma.task.findFirst({
       where: {
-        id: BigInt(id),
-        driverId: BigInt(supirId)
+        id: toBigIntParam(id),
+        driverId: BigInt(String(supirId))
       },
       include: {
         report: {
@@ -261,8 +273,8 @@ export const updateStatusTugas = async (req: Request, res: Response) => {
 
     const task = await prisma.task.findFirst({
       where: {
-        id: BigInt(id),
-        driverId: BigInt(supirId)
+        id: toBigIntParam(id),
+        driverId: BigInt(String(supirId))
       }
     });
 
@@ -275,14 +287,14 @@ export const updateStatusTugas = async (req: Request, res: Response) => {
     if (status === 'SELESAI') updateData.completedAt = new Date();
 
     const updatedTask = await prisma.task.update({
-      where: { id: BigInt(id) },
+      where: { id: toBigIntParam(id) },
       data: updateData
     });
 
     // Buat notifikasi untuk admin
     await prisma.notification.create({
       data: {
-        userId: BigInt(task.assignerId),
+        userId: task.assignerId,
         title: 'Status Tugas Diperbarui',
         message: `Tugas ${task.taskNumber} sekarang ${status}`,
         isRead: false
@@ -315,8 +327,8 @@ export const uploadFotoTugas = async (req: Request, res: Response) => {
 
     const task = await prisma.task.findFirst({
       where: {
-        id: BigInt(id),
-        driverId: BigInt(supirId)
+        id: toBigIntParam(id),
+        driverId: BigInt(String(supirId))
       }
     });
 
@@ -342,7 +354,7 @@ export const uploadFotoTugas = async (req: Request, res: Response) => {
     // Simpan ke database
     const taskPhoto = await prisma.taskPhoto.create({
       data: {
-        taskId: BigInt(id),
+        taskId: toBigIntParam(id),
         photoUrl: urlData.publicUrl,
         type: type || 'AFTER'
       }
@@ -373,8 +385,8 @@ export const inputVolume = async (req: Request, res: Response) => {
 
     const task = await prisma.task.findFirst({
       where: {
-        id: BigInt(id),
-        driverId: BigInt(supirId)
+        id: toBigIntParam(id),
+        driverId: BigInt(String(supirId))
       }
     });
 
@@ -395,14 +407,14 @@ export const inputVolume = async (req: Request, res: Response) => {
     if (task.reportId) {
       await prisma.volume.create({
         data: {
-          reportId: BigInt(task.reportId),
+          reportId: task.reportId,
           volumeKg: volume,
-          recordedBy: BigInt(supirId)
+          recordedBy: BigInt(String(supirId))
         }
       });
 
       await prisma.report.update({
-        where: { id: BigInt(task.reportId) },
+        where: { id: task.reportId },
         data: { status: 'SELESAI' }
       });
     }
@@ -483,7 +495,7 @@ export const getProfil = async (req: Request, res: Response) => {
     const supirId = (req as any).user.id;
 
     const supir = await prisma.user.findUnique({
-      where: { id: BigInt(supirId) },
+      where: { id: BigInt(String(supirId)) },
       select: {
         id: true,
         fullName: true,
@@ -496,16 +508,16 @@ export const getProfil = async (req: Request, res: Response) => {
     });
 
     const truck = await prisma.truck.findFirst({
-      where: { operatorId: BigInt(supirId) },
+      where: { operatorId: BigInt(String(supirId)) },
       select: { plateNumber: true, status: true }
     });
 
     const totalTugas = await prisma.task.count({
-      where: { driverId: BigInt(supirId) }
+      where: { driverId: BigInt(String(supirId)) }
     });
 
     const tugasSelesai = await prisma.task.count({
-      where: { driverId: BigInt(supirId), status: 'SELESAI' }
+      where: { driverId: BigInt(String(supirId)), status: 'SELESAI' }
     });
 
     res.json({
@@ -535,7 +547,7 @@ export const updateLokasi = async (req: Request, res: Response) => {
     const supirId = (req as any).user.id;
 
     const truck = await prisma.truck.findFirst({
-      where: { operatorId: BigInt(supirId) }
+      where: { operatorId: BigInt(String(supirId)) }
     });
 
     if (!truck) {

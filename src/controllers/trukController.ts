@@ -2,6 +2,18 @@ import type { Request, Response } from 'express';
 import { prisma } from '../config/db.js';
 import bcrypt from 'bcrypt';
 
+const toBigIntParam = (value: string | string[] | undefined): bigint => {
+  if (Array.isArray(value)) {
+    return BigInt(value[0]);
+  }
+
+  if (!value) {
+    throw new Error('ID tidak valid');
+  }
+
+  return BigInt(value);
+};
+
 // GET semua truk
 export const getAllTruk = async (req: Request, res: Response) => {
   try {
@@ -43,7 +55,7 @@ export const getTrukById = async (req: Request, res: Response) => {
     const { id } = req.params;
 
     const truk = await prisma.truck.findUnique({
-      where: { id: BigInt(id) },
+      where: { id: toBigIntParam(id) },
       include: {
         operator: {
           select: {
@@ -146,7 +158,7 @@ export const updateTruk = async (req: Request, res: Response) => {
 
     // Cek apakah truk ada
     const existingTruk = await prisma.truck.findUnique({
-      where: { id: BigInt(id) }
+      where: { id: toBigIntParam(id) }
     });
 
     if (!existingTruk) {
@@ -166,7 +178,7 @@ export const updateTruk = async (req: Request, res: Response) => {
 
     // Update data
     const updatedTruk = await prisma.truck.update({
-      where: { id: BigInt(id) },
+      where: { id: toBigIntParam(id) },
       data: {
         plateNumber: plateNumber || existingTruk.plateNumber,
         operatorId: operatorId ? BigInt(operatorId) : existingTruk.operatorId,
@@ -207,7 +219,7 @@ export const deleteTruk = async (req: Request, res: Response) => {
 
     // Cek apakah truk ada
     const existingTruk = await prisma.truck.findUnique({
-      where: { id: BigInt(id) }
+      where: { id: toBigIntParam(id) }
     });
 
     if (!existingTruk) {
@@ -216,7 +228,7 @@ export const deleteTruk = async (req: Request, res: Response) => {
 
     // Hapus truk
     await prisma.truck.delete({
-      where: { id: BigInt(id) }
+      where: { id: toBigIntParam(id) }
     });
 
     res.json({ message: 'Truk berhasil dihapus' });
