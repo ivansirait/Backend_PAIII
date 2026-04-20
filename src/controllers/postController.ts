@@ -41,7 +41,13 @@ export const createPost = async (req: Request, res: Response) => {
 export const deletePost = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    await prisma.post.delete({ where: { id: BigInt(id) } });
+    const parsedId = Number.parseInt(String(id), 10);
+
+    if (Number.isNaN(parsedId)) {
+      return res.status(400).json({ error: 'ID tidak valid' });
+    }
+
+    await prisma.post.delete({ where: { id: parsedId } });
     res.json({ success: true, message: "Berita dihapus" });
   } catch (error) {
     res.status(500).json({ error: "Gagal menghapus berita" });

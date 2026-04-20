@@ -1,6 +1,29 @@
 import type { Request, Response } from 'express';
 import { prisma } from '../config/db.js';
-import bcrypt from 'bcrypt';
+import { Prisma } from '@prisma/client';
+
+const parseOptionalInt = (value: unknown): number | null => {
+  if (value === undefined || value === null || value === '') return null;
+  const parsed = Number.parseInt(String(value), 10);
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
+const parseOptionalFloat = (value: unknown): number | null => {
+  if (value === undefined || value === null || value === '') return null;
+  const parsed = Number.parseFloat(String(value));
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
+const parseOptionalBoolean = (value: unknown, fallback: boolean): boolean => {
+  if (value === undefined || value === null || value === '') return fallback;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'true') return true;
+    if (normalized === 'false') return false;
+  }
+  return fallback;
+};
 
 // GET semua wilayah (kecamatan)
 export const getAllWilayah = async (req: Request, res: Response) => {
@@ -81,16 +104,28 @@ export const createWilayah = async (req: Request, res: Response) => {
       longitude,
       isActive 
     } = req.body;
+    const normalizedName = typeof name === 'string' ? name.trim() : name;
+    const normalizedCode = typeof code === 'string' ? code.trim() : code;
 
     // Validasi input wajib
-    if (!name) {
+    if (!normalizedName) {
       return res.status(400).json({ error: 'Nama wilayah harus diisi' });
     }
 
+    const parsedPopulation = parseOptionalInt(population);
+    const parsedCapacityVolume = parseOptionalInt(capacityVolume);
+    const parsedLatitude = parseOptionalFloat(latitude);
+    const parsedLongitude = parseOptionalFloat(longitude);
+    const parsedIsActive = parseOptionalBoolean(isActive, true);
+
+    if ((latitude !== undefined && parsedLatitude === null) || (longitude !== undefined && parsedLongitude === null)) {
+      return res.status(400).json({ error: 'Koordinat wilayah tidak valid' });
+    }
+
     // Cek apakah kode sudah digunakan
-    if (code) {
+    if (normalizedCode) {
       const existingCode = await prisma.location.findUnique({
-        where: { code }
+        where: { code: normalizedCode }
       });
       if (existingCode) {
         return res.status(400).json({ error: 'Kode wilayah sudah digunakan' });
@@ -100,15 +135,15 @@ export const createWilayah = async (req: Request, res: Response) => {
     // Buat wilayah baru
     const newWilayah = await prisma.location.create({
       data: {
-        name,
+        name: normalizedName,
         locationType: 'KECAMATAN',
-        code: code || null,
-        population: population ? parseInt(population) : null,
+        code: normalizedCode || null,
+        population: parsedPopulation,
         address: address || null,
-        capacityVolume: capacityVolume ? parseInt(capacityVolume) : null,
-        latitude: latitude ? parseFloat(latitude) : 0,
-        longitude: longitude ? parseFloat(longitude) : 0,
-        isActive: isActive !== undefined ? isActive : true
+        capacityVolume: parsedCapacityVolume,
+        latitude: parsedLatitude ?? 0,
+        longitude: parsedLongitude ?? 0,
+        isActive: parsedIsActive
       }
     });
 
@@ -126,9 +161,17 @@ export const createWilayah = async (req: Request, res: Response) => {
       createdAt: newWilayah.createdAt
     });
 
-  } catch (error) {
+  } catch (error: any) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2002') {
+        return res.status(400).json({ error: 'Kode wilayah sudah digunakan' });
+      }
+      if (error.code === 'P2003') {
+        return res.status(400).json({ error: 'Data relasi tidak valid' });
+      }
+    }
     console.error('Error creating wilayah:', error);
-    res.status(500).json({ error: 'Gagal menambah wilayah' });
+    res.status(500).json({ error: error?.message || 'Gagal menambah wilayah' });
   }
 };
 
@@ -156,6 +199,16 @@ export const updateWilayah = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Wilayah tidak ditemukan' });
     }
 
+    const parsedPopulation = parseOptionalInt(population);
+    const parsedCapacityVolume = parseOptionalInt(capacityVolume);
+    const parsedLatitude = parseOptionalFloat(latitude);
+    const parsedLongitude = parseOptionalFloat(longitude);
+    const parsedIsActive = parseOptionalBoolean(isActive, existingWilayah.isActive);
+
+    if ((latitude !== undefined && parsedLatitude === null) || (longitude !== undefined && parsedLongitude === null)) {
+      return res.status(400).json({ error: 'Koordinat wilayah tidak valid' });
+    }
+
     // Jika kode diubah, cek apakah sudah digunakan wilayah lain
     if (code && code !== existingWilayah.code) {
       const wilayahWithSameCode = await prisma.location.findUnique({
@@ -172,12 +225,12 @@ export const updateWilayah = async (req: Request, res: Response) => {
       data: {
         name: name || existingWilayah.name,
         code: code !== undefined ? code : existingWilayah.code,
-        population: population ? parseInt(population) : existingWilayah.population,
+        population: parsedPopulation ?? existingWilayah.population,
         address: address !== undefined ? address : existingWilayah.address,
-        capacityVolume: capacityVolume ? parseInt(capacityVolume) : existingWilayah.capacityVolume,
-        latitude: latitude ? parseFloat(latitude) : existingWilayah.latitude,
-        longitude: longitude ? parseFloat(longitude) : existingWilayah.longitude,
-        isActive: isActive !== undefined ? isActive : existingWilayah.isActive,
+        capacityVolume: parsedCapacityVolume ?? existingWilayah.capacityVolume,
+        latitude: parsedLatitude ?? existingWilayah.latitude,
+        longitude: parsedLongitude ?? existingWilayah.longitude,
+        isActive: parsedIsActive,
       }
     });
 

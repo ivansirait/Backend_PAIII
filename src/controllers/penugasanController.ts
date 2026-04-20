@@ -1,6 +1,18 @@
 import type { Request, Response } from 'express';
 import { prisma } from '../config/db.js';
 
+const toBigIntParam = (value: string | string[] | undefined): bigint => {
+  if (Array.isArray(value)) {
+    return BigInt(value[0]);
+  }
+
+  if (!value) {
+    throw new Error('ID tidak valid');
+  }
+
+  return BigInt(value);
+};
+
 // Helper untuk generate task number
 const generateTaskNumber = async (type: string): Promise<string> => {
   const date = new Date();
@@ -133,7 +145,7 @@ export const getPenugasanById = async (req: Request, res: Response) => {
     const { id } = req.params;
 
     const task = await prisma.task.findUnique({
-      where: { id: BigInt(id) },
+      where: { id: toBigIntParam(id) },
       include: {
         driver: {
           select: { id: true, fullName: true, phoneNumber: true, email: true }
@@ -201,7 +213,7 @@ export const createPenugasanDariAduan = async (req: Request, res: Response) => {
 
     // Cek apakah laporan ada
     const report = await prisma.report.findUnique({
-      where: { id: BigInt(reportId) }
+      where: { id: BigInt(String(reportId)) }
     });
 
     if (!report) {
@@ -210,7 +222,7 @@ export const createPenugasanDariAduan = async (req: Request, res: Response) => {
 
     // Cek apakah laporan sudah ditugaskan
     const existingTask = await prisma.task.findFirst({
-      where: { reportId: BigInt(reportId) }
+      where: { reportId: BigInt(String(reportId)) }
     });
 
     if (existingTask) {
@@ -229,14 +241,14 @@ export const createPenugasanDariAduan = async (req: Request, res: Response) => {
         taskNumber,
         type: 'ADUAN',
         status: 'DITUGASKAN',
-        driverId: BigInt(driverId),
-        truckId: truckId ? BigInt(truckId) : null,
-        assignerId: BigInt(adminId),
-        reportId: BigInt(reportId),
+        driverId: BigInt(String(driverId)),
+        truckId: truckId ? BigInt(String(truckId)) : null,
+        assignerId: BigInt(String(adminId)),
+        reportId: BigInt(String(reportId)),
         location: report.description || 'Lokasi belum diisi',
         latitude: report.latitude,
         longitude: report.longitude,
-        district: report.district || 'Unknown',
+        district: 'Unknown',
         description: report.description,
         scheduledAt: new Date(scheduledAt)
       }
@@ -288,7 +300,7 @@ export const updatePenugasan = async (req: Request, res: Response) => {
     const { driverId, truckId, scheduledAt, status, notes } = req.body;
 
     const existingTask = await prisma.task.findUnique({
-      where: { id: BigInt(id) }
+      where: { id: toBigIntParam(id) }
     });
 
     if (!existingTask) {
@@ -296,7 +308,7 @@ export const updatePenugasan = async (req: Request, res: Response) => {
     }
 
     const updatedTask = await prisma.task.update({
-      where: { id: BigInt(id) },
+      where: { id: toBigIntParam(id) },
       data: {
         driverId: driverId ? BigInt(driverId) : undefined,
         truckId: truckId ? BigInt(truckId) : undefined,
@@ -326,7 +338,7 @@ export const deletePenugasan = async (req: Request, res: Response) => {
     const { id } = req.params;
 
     const existingTask = await prisma.task.findUnique({
-      where: { id: BigInt(id) }
+      where: { id: toBigIntParam(id) }
     });
 
     if (!existingTask) {
@@ -336,13 +348,13 @@ export const deletePenugasan = async (req: Request, res: Response) => {
     // Jika tugas dari aduan, kembalikan status laporan
     if (existingTask.reportId) {
       await prisma.report.update({
-        where: { id: BigInt(existingTask.reportId) },
+        where: { id: existingTask.reportId },
         data: { status: 'PENDING' }
       });
     }
 
     await prisma.task.delete({
-      where: { id: BigInt(id) }
+      where: { id: toBigIntParam(id) }
     });
 
     res.json({
